@@ -1,0 +1,24 @@
+body {
+	width: 100%;
+	min-height: 100vh;
+	padding: 1rem;
+
+	header {
+		& > menu.formatting--container {
+			list-style: none;
+			display: flex;
+			margin: 0;
+			padding: 1rem 0;
+			gap: 1rem;
+		}
+	}
+
+	& div#editor {
+		border: 1px solid gray;
+		height: 100%;
+
+		& .generation {
+			background: #efefef;
+		}
+	}
+}
