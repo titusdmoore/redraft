@@ -4,10 +4,10 @@ Core Features
 
 
 ## Text Editor
- - [ ] Basic rich text editing capabilities
+ - [x] Basic rich text editing capabilities
  - [ ] Clean, distraction-free writing interface
  - [ ] Auto-save functionality
- - [ ] Offline file type? Look into. Just think about empty p's do something like 4p.
+ - [ ] Offline file type? ~~Look into. Just think about empty p's do something like 4p.~~
  - [ ] Keyboard shortcuts for common actions
  - [ ] Word count and writing statistics
  - [ ] Export options (PDF, DOCX, etc.)
