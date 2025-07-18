@@ -1,3 +1,5 @@
+const Delta = Quill.import('delta');
+
 // The generation module is how we keep track of a documents generations. 
 // A singular generation needs the following information
 // 	- Generation Id
@@ -42,6 +44,7 @@ class GenerationTracker {
 			if (Object.keys(newDelta).includes("attributes") && Object.keys(newDelta.attributes).includes("generation")) {
 				const generationId = newDelta.attributes.generation;
 				if (!(generationId in this.generations)) {
+					// I THINK here we want to create a delta that contains an insert for the first generation, if empty may have to place newline per quill docs
 					this.generations[newDelta.attributes.generation] = { blocks: [[pointer, pointer + newDelta.retain]] };
 				} else {
 					this.generations[newDelta.attributes.generation].blocks.push([pointer, pointer + newDelta.retain]);
