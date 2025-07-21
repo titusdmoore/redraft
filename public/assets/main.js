@@ -11,6 +11,9 @@ const quill = new Quill('#editor', {
 	},
 });
 
+// NOTE: BEGUG only bind quill instance to window
+window.debugQuill = quill;
+
 function handleCustomValue(type) {
 	switch (type) {
 		case "generation":

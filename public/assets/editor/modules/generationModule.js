@@ -36,6 +36,11 @@ class GenerationTracker {
 
 		// This compute runs for every input I think, which isn't ideal
 		delta.forEach((newDelta, _index) => {
+			// NOTE: Currently I am handling things as either input OR generation, this is not because I am 100% sure that it truly is one or the other.
+			if (this.activeGeneration !== null) {
+				console.log("Generation Delta: ", newDelta)
+			}
+
 			// What are the ways we hit this is how do we need to handle?
 			// - We select a segment of text inside a single block - handle by creating a generation, and add the start and end - SHOULD BE DONE
 			// - We've selected a segment of text that spans multiple blocks - create a generation, on subsequent runs of the parent closure we will have the same generation id
@@ -65,8 +70,12 @@ class GenerationTracker {
 		for (const [generationId, generation] of Object.entries(this.generations)) {
 			if (generation.blocks[0][0] < range.index && range.index < generation.blocks[generation.blocks.length - 1][1]) {
 				console.log("Inside of a generation", generationId, generation)
+				this.activeGeneration = generationId;
+				return;
 			}
 		}
+		
+		this.activeGeneration = null; 
 	}
 }
 
