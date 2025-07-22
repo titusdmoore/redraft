@@ -1,4 +1,4 @@
-const Delta = Quill.import('delta');
+const Module = Quill.import('core/module');
 
 // The generation module is how we keep track of a documents generations. 
 // A singular generation needs the following information
@@ -6,12 +6,15 @@ const Delta = Quill.import('delta');
 // 	- Start and end index
 // 	- Content or delta information to be able to build information for a generation.
 //
+//	TODO figure out what happens when a generation is created, is the text removed, just highlight with an option to create a revision?
 // 	TODO figure out how overlapped generations would work
 // 	TODO figure out what happens when the text a generation covers has been deleted
 // 	TODO figure out how to update generation index
 // 		- What if we register and event on input or change text, then mutate indexes by length of changes?
-class GenerationTracker {
+class GenerationTracker extends Module {
 	constructor(quill, options) {
+		super();
+
 		this.quill = quill;
 		this.options = options;
 
@@ -36,11 +39,6 @@ class GenerationTracker {
 
 		// This compute runs for every input I think, which isn't ideal
 		delta.forEach((newDelta, _index) => {
-			// NOTE: Currently I am handling things as either input OR generation, this is not because I am 100% sure that it truly is one or the other.
-			if (this.activeGeneration !== null) {
-				console.log("Generation Delta: ", newDelta)
-			}
-
 			// What are the ways we hit this is how do we need to handle?
 			// - We select a segment of text inside a single block - handle by creating a generation, and add the start and end - SHOULD BE DONE
 			// - We've selected a segment of text that spans multiple blocks - create a generation, on subsequent runs of the parent closure we will have the same generation id
@@ -49,33 +47,55 @@ class GenerationTracker {
 			if (Object.keys(newDelta).includes("attributes") && Object.keys(newDelta.attributes).includes("generation")) {
 				const generationId = newDelta.attributes.generation;
 				if (!(generationId in this.generations)) {
-					// I THINK here we want to create a delta that contains an insert for the first generation, if empty may have to place newline per quill docs
 					this.generations[newDelta.attributes.generation] = { blocks: [[pointer, pointer + newDelta.retain]] };
+
+					// Generations have been updated, handle UI updates
+					this.updateGenerationsUI();
 				} else {
 					this.generations[newDelta.attributes.generation].blocks.push([pointer, pointer + newDelta.retain]);
 				}
 			}
 
-			console.log("Checking retaining", pointer, newDelta.retain);
 			pointer += newDelta.retain;
 		});
 
-		console.log(this.generations);
-		console.log(this.quill.getContents());
+		// console.log(this.generations);
+		// console.log(this.quill.getContents());
 	}
 
 	// This function handles where the cursor is. This allows me to check when users are clicking or selecting a generation area.
 	handleCursorInput(range, oldRange, source) {
+		// Prevent error on inital page load.
+		if (range === null) return;
+
 		console.log("This is a cursor event", range, oldRange, source, this.generations);
 		for (const [generationId, generation] of Object.entries(this.generations)) {
 			if (generation.blocks[0][0] < range.index && range.index < generation.blocks[generation.blocks.length - 1][1]) {
 				console.log("Inside of a generation", generationId, generation)
-				this.activeGeneration = generationId;
-				return;
 			}
 		}
-		
-		this.activeGeneration = null; 
+	}
+
+	updateGenerationsUI() {
+		const generationsParentElement = document.querySelector("#generations");
+
+		// Error Guard
+		if (generationsParentElement === null) return;
+
+		// Prevent duplicate nodes being added to parent
+		generationsParentElement.innerHTML = "";
+
+		console.log(this.generations)
+		for (const [generationId, generation] of Object.entries(this.generations)) {
+			console.log("Hello, Generation", generationId, generation)
+			// Create Generation Card
+			let el = document.createElement("div");
+			el.classList.add("generation-card--container");
+			el.id = `generationCard${generationId}`;
+			el.textContent = `generationCard${generationId}`;
+
+			generationsParentElement.appendChild(el);
+		}
 	}
 }
 

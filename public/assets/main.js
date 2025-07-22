@@ -4,6 +4,7 @@ import './editor/formats/linkBlot.js';
 import './editor/formats/generationBlot.js';
 
 import './editor/modules/generationModule.js';
+import { devInit } from './editor/dev.js';
 
 const quill = new Quill('#editor', {
 	modules: {
@@ -13,6 +14,7 @@ const quill = new Quill('#editor', {
 
 // NOTE: BEGUG only bind quill instance to window
 window.debugQuill = quill;
+devInit();
 
 function handleCustomValue(type) {
 	switch (type) {

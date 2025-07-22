@@ -13,12 +13,22 @@ body {
 		}
 	}
 
-	& div#editor {
-		border: 1px solid gray;
-		height: 100%;
+	& main {
+		display: grid;
+		grid-template-columns: 3fr 1fr;
+		gap: 1rem;
 
-		& .generation {
-			background: #efefef;
+		& div#editor {
+			border: 1px solid gray;
+			height: 100%;
+
+			& .generation {
+				background: #efefef;
+			}
+		}
+
+		& div#generations {
+			border: 1px solid blue;
 		}
 	}
 }
