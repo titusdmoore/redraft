@@ -52,6 +52,21 @@ class GenerationTracker extends Module {
 				console.log("I am a further delta", newDelta, retainedContent, generation);
 				// I believe this should be moved to a debounced handler, maybe I need a full module meant to parse text to delta. TBD
 
+				if (generation.deltas.length <= 1) {
+					generation.deltas.push({ ops: [] });
+				}
+
+				for (const [opKey, opValue] of Object.entries(newDelta)) {
+					console.log("This message should only run once.", opKey, opValue);
+					switch (opKey) {
+						case "retain":
+							break;
+						case "delete":
+							break;
+						case "insert":
+							break;
+					}
+				}
 			}
 
 			// What are the ways we hit this is how do we need to handle?
