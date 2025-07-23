@@ -22,7 +22,7 @@ class GenerationTracker extends Module {
 		// I think we may want to store the delta. We would have an insert representing the first generation, with subsequent deltas.
 		// Potential issues: What happens when someone starts editing outside of the delta that impacts delta text? How do we tie into editor deltas?
 		// Active used to keep track of which generation an author is looking at?
-		// Rough structure { intGenerationId: [{ delta: {}, blocks: [ [intStart, endEnd], active: bool ]}] }
+		// Rough structure { intGenerationId: [{ deltas: [deltaArr], blocks: [ [intStart, endEnd], active: bool ]}] }
 		// ^^ Just thinking, do I need lookups by generationId? Would an array be better?
 		this.generations = {};
 		this.activeGeneration = null;
@@ -39,20 +39,44 @@ class GenerationTracker extends Module {
 
 		// This compute runs for every input I think, which isn't ideal
 		delta.forEach((newDelta, _index) => {
+			// Handle delta when cursor is inside a generation.
+			// This will handle tracking deltas for a specific generation.
+			if (this.activeGeneration !== null) {
+				let generation = this.generations[this.activeGeneration];
+				let retainedContent = this.quill.getContents(pointer, newDelta.retain);
+
+				// Sanity Check
+				console.assert(generation !== undefined, "Unexpected Generation selected, unable to add changes to generation.");
+				if (generation === undefined) return;
+
+				console.log("I am a further delta", newDelta, retainedContent, generation);
+				// I believe this should be moved to a debounced handler, maybe I need a full module meant to parse text to delta. TBD
+
+			}
+
 			// What are the ways we hit this is how do we need to handle?
 			// - We select a segment of text inside a single block - handle by creating a generation, and add the start and end - SHOULD BE DONE
 			// - We've selected a segment of text that spans multiple blocks - create a generation, on subsequent runs of the parent closure we will have the same generation id
 			// 	this allows us to just add an additional block to blocks arr - SHOULD BE DONE - I think this also answers a question above about the generation struct
 			// - We've selected partial of a generation block text and click generation - Prompt user to remove generation or create new.
 			if (Object.keys(newDelta).includes("attributes") && Object.keys(newDelta.attributes).includes("generation")) {
+				console.log("what's included?", newDelta)
+				let retainedContent = this.quill.getContents(pointer, newDelta.retain);
+				// Handle 
+				console.log("Active?", this.activeGeneration)
+				// console.log("Retain delta", retainContent);
+
 				const generationId = newDelta.attributes.generation;
 				if (!(generationId in this.generations)) {
-					this.generations[newDelta.attributes.generation] = { blocks: [[pointer, pointer + newDelta.retain]] };
+					this.generations[newDelta.attributes.generation] = { deltas: [retainedContent], blocks: [[pointer, pointer + newDelta.retain]] };
 
 					// Generations have been updated, handle UI updates
 					this.updateGenerationsUI();
 				} else {
 					this.generations[newDelta.attributes.generation].blocks.push([pointer, pointer + newDelta.retain]);
+
+					// This code shouldn't work for the next generation but it should work for the first generation.
+					this.generations[newDelta.attributes.generation].deltas[0].ops.push(...retainedContent.ops);
 				}
 			}
 
@@ -72,8 +96,12 @@ class GenerationTracker extends Module {
 		for (const [generationId, generation] of Object.entries(this.generations)) {
 			if (generation.blocks[0][0] < range.index && range.index < generation.blocks[generation.blocks.length - 1][1]) {
 				console.log("Inside of a generation", generationId, generation)
+				this.activeGeneration = generationId;
+				return;
 			}
 		}
+
+		this.activeGeneration = null;
 	}
 
 	updateGenerationsUI() {
