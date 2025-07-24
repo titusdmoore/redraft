@@ -58,12 +58,26 @@ class GenerationTracker extends Module {
 
 				for (const [opKey, opValue] of Object.entries(newDelta)) {
 					console.log("This message should only run once.", opKey, opValue);
+					let lastOp = generation.deltas[1].ops[generation.deltas[1].ops.length - 1];
 					switch (opKey) {
 						case "retain":
+							// Every text entry will come in as a retain and an insert, we don't wan't duplicate retains. 
+							// This logic is temporary until I can figure out a better solution.
+							console.log("retain exists", generation.deltas[1].ops.some(el => (Object.keys(el).includes("retain") && el.retain === opValue - generation.blocks[0][0])))
+							if (generation.deltas[1].ops.some(el => (Object.keys(el).includes("retain") && el.retain === opValue - generation.blocks[0][0]))) continue;
+
+							generation.deltas[1].ops.push({ retain: opValue - generation.blocks[0][0] });
 							break;
 						case "delete":
+							generation.deltas[1].ops.push(newDelta);
 							break;
 						case "insert":
+							if (lastOp && Object.keys(lastOp).includes("insert")) {
+								lastOp.insert.push(newDelta.insert);
+								continue;
+							}
+
+							generation.deltas[1].ops.push(newDelta);
 							break;
 					}
 				}
