@@ -3,12 +3,12 @@ import './editor/formats/italicBlot.js';
 import './editor/formats/linkBlot.js';
 import './editor/formats/generationBlot.js';
 
-import './editor/modules/generationModule.js';
+import './editor/modules/generationContextModule.js';
 import { devInit } from './editor/dev.js';
 
 const quill = new Quill('#editor', {
 	modules: {
-		generationTracker: true
+		generationContextTracker: true
 	},
 });
 
