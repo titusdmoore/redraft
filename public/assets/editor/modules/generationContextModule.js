@@ -31,6 +31,7 @@ class GenerationContextTracker extends Module {
 
 		// NOTE: this is a temp var while I refactor the logic in this module
 		this._generationContexts = {};
+		window.debugGenerationContexts = this._generationContexts;
 
 
 		this.quill.on('text-change', this.handleTextChange.bind(this));
@@ -46,6 +47,7 @@ class GenerationContextTracker extends Module {
 		delta.forEach((newDelta, _index) => {
 			// Handle delta when cursor is inside a generation.
 			// This will handle tracking deltas for a specific generation.
+			console.log("Active generation", this.activeGenerationContext)
 			if (this.activeGenerationContext !== null) {
 				let generation = this.generationContexts[this.activeGenerationContext];
 				let generationContext = this._generationContexts[this.activeGenerationContext];
@@ -55,22 +57,19 @@ class GenerationContextTracker extends Module {
 				console.assert(generation !== undefined, "Unexpected Generation selected, unable to add changes to generation.");
 				if (generation === undefined) return;
 
-				console.log("I am a further delta", newDelta, retainedContent, generation);
+				console.log("generation update")
 				generationContext.handleGenerationUpdate(newDelta);
-				// I believe this should be moved to a debounced handler, maybe I need a full module meant to parse text to delta. TBD
 
 				if (generation.deltas.length <= 1) {
 					generation.deltas.push({ ops: [] });
 				}
 
 				for (const [opKey, opValue] of Object.entries(newDelta)) {
-					// console.log("This message should only run once.", opKey, opValue);
 					let lastOp = generation.deltas[1].ops[generation.deltas[1].ops.length - 1];
 					switch (opKey) {
 						case "retain":
 							// Every text entry will come in as a retain and an insert, we don't wan't duplicate retains. 
 							// This logic is temporary until I can figure out a better solution.
-							// console.log("retain exists", generation.deltas[1].ops.some(el => (Object.keys(el).includes("retain") && el.retain === opValue - generation.blocks[0][0])))
 							if (generation.deltas[1].ops.some(el => (Object.keys(el).includes("retain") && el.retain === opValue - generation.blocks[0][0]))) continue;
 
 							generation.deltas[1].ops.push({ retain: opValue - generation.blocks[0][0] });
@@ -96,11 +95,7 @@ class GenerationContextTracker extends Module {
 			// 	this allows us to just add an additional block to blocks arr - SHOULD BE DONE - I think this also answers a question above about the generation struct
 			// - We've selected partial of a generation block text and click generation - Prompt user to remove generation or create new.
 			if (Object.keys(newDelta).includes("attributes") && Object.keys(newDelta.attributes).includes("generation")) {
-				// console.log("what's included?", newDelta)
 				let retainedContent = this.quill.getContents(pointer, newDelta.retain);
-				// Handle 
-				// console.log("Active?", this.activeGenerationContext)
-				// console.log("Retain delta", retainContent);
 
 				const generationId = newDelta.attributes.generation;
 				if (!(generationId in this.generationContexts)) {
@@ -120,9 +115,6 @@ class GenerationContextTracker extends Module {
 
 			pointer += newDelta.retain;
 		});
-
-		// console.log(this.generationContexts);
-		// console.log(this.quill.getContents());
 	}
 
 	// This function handles where the cursor is. This allows me to check when users are clicking or selecting a generation area.
@@ -130,11 +122,11 @@ class GenerationContextTracker extends Module {
 		// Prevent error on inital page load.
 		if (range === null) return;
 
-		console.log("This is a cursor event", range, oldRange, source, this.generationContexts);
-		for (const [generationId, generation] of Object.entries(this.generationContexts)) {
-			if (generation.blocks[0][0] < range.index && range.index < generation.blocks[generation.blocks.length - 1][1]) {
-				console.log("Inside of a generation", generationId, generation)
-				this.activeGenerationContext = generationId;
+		// console.log("This is a cursor event", range, oldRange, source, this._generationContexts);
+		for (const [generationContextId, generationContext] of Object.entries(this._generationContexts)) {
+			if (generationContext.head <= range.index && range.index <= (generationContext.head + generationContext.length)) {
+				// console.log("Inside of a generation", generationId, generation)
+				this.activeGenerationContext = generationContextId;
 				return;
 			}
 		}
@@ -151,15 +143,28 @@ class GenerationContextTracker extends Module {
 		// Prevent duplicate nodes being added to parent
 		generationsParentElement.innerHTML = "";
 
-		console.log(this.generationContexts)
-		for (const [generationId, generation] of Object.entries(this.generationContexts)) {
-			console.log("Hello, Generation", generationId, generation)
+		for (const [generationContextId, generationContext] of Object.entries(this._generationContexts)) {
+			console.log("Generation Context", generationContextId, generationContext)
 			// Create Generation Card
 			let el = document.createElement("div");
 			el.classList.add("generation-card--container");
-			el.id = `generationCard${generationId}`;
-			el.textContent = `generationCard${generationId}`;
+			el.id = `generationContextCard${generationContextId}`;
+			el.style.margin = '0  1rem 1rem';
+			el.style.border = '1px solid green';
 
+			let heading = document.createElement("h2");
+			heading.innerText = `Generation context ${generationContextId}`;
+			el.appendChild(heading);
+
+			let ul = document.createElement('ul');
+			let genIndex = 0;
+			for (const generation of generationContext.generations) {
+				let li = document.createElement('li');
+				li.innerText = `Generation ${genIndex++}`;
+				ul.appendChild(li);
+			}
+
+			el.appendChild(ul);
 			generationsParentElement.appendChild(el);
 		}
 	}
