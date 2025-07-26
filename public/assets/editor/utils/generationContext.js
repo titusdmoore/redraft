@@ -47,22 +47,36 @@ export class GenerationContext {
 	// Takes deltas from editor and updates the latest generation.
 	handleGenerationUpdate(op) {
 		this.#queuedOperations.push(op);
-		console.log("hit generation");
 
 		// This will handle the logic to prevent the computation for merging operations into a generation from running immediately on every keypress.
 		(function() {
-			console.log("hit inner")
 			clearTimeout(this.#debounceTimer);
-			console.log("hit inner 2")
 
 			this.#debounceTimer = setTimeout(() => {
-				console.log("timed function");
 				this.generations[this.#activeGeneration].mergeOps(this.#queuedOperations);
 				this.#queuedOperations = [];
 			}, this.#debounceTimeout);
 
 			// this.#debounceTimer = null;
 		}).apply(this);
+	}
+
+
+	buildContentForGeneration(generationIndex) {
+		// This may need to throw
+		if (generationIndex >= this.generations.length) return;
+
+		let ops = [];
+
+		for (let iter = 0; iter <= this.#activeGeneration; iter++) {
+			ops.push(this.generations[iter].delta.ops);
+		}
+
+		return new Delta(ops);
+	}
+
+	buildContentForActiveGeneration() {
+		return this.buildContentForGeneration(this.#activeGeneration);
 	}
 
 	#getActiveGenerationLength() {
