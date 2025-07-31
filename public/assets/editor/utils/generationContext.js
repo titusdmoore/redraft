@@ -69,7 +69,8 @@ export class GenerationContext {
 		let ops = [];
 
 		for (let iter = 0; iter <= this.#activeGeneration; iter++) {
-			ops.push(this.generations[iter].delta.ops);
+			console.log("Ran iter")
+			ops.push(...this.generations[iter].delta.ops);
 		}
 
 		return new Delta(ops);
@@ -77,6 +78,12 @@ export class GenerationContext {
 
 	buildContentForActiveGeneration() {
 		return this.buildContentForGeneration(this.#activeGeneration);
+	}
+
+	setActiveGeneration(generation) {
+		this.#activeGeneration = generation;
+
+		return this.buildContentForActiveGeneration();
 	}
 
 	#getActiveGenerationLength() {
@@ -89,15 +96,17 @@ export class GenerationContext {
 					// NOTE: Retains don't change length, they are just pointers for reconstructing the content, so we don't need to track here.
 					switch (opType) {
 						case 'insert':
+							// console.log(op[opType], op[opType].length);
 							length += op[opType].length;
 							break;
 						case 'delete':
+							// console.log(op[opType]);
 							length -= op[opType];
 							break;
 					}
 				});
-
 			}
+			// console.log("Length", length)
 		}
 
 		return length;

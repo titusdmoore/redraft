@@ -1,5 +1,6 @@
 import { GenerationContext } from "../utils/generationContext.js";
 const Module = Quill.import('core/module');
+const Delta = Quill.import('delta');
 
 // The generation module is how we keep track of a documents generations. 
 // A singular generation needs the following information
@@ -13,6 +14,8 @@ const Module = Quill.import('core/module');
 // 	TODO figure out how to update generation index
 // 		- What if we register and event on input or change text, then mutate indexes by length of changes?
 class GenerationContextTracker extends Module {
+	#trackingInitial
+
 	constructor(quill, options) {
 		super();
 
@@ -36,6 +39,7 @@ class GenerationContextTracker extends Module {
 
 		this.quill.on('text-change', this.handleTextChange.bind(this));
 		this.quill.on('selection-change', this.handleCursorInput.bind(this));
+		this.quill.on('generation-change', this.handleGenerationChange.bind(this));
 	}
 
 	handleTextChange(delta, oldDelta, source) {
@@ -47,46 +51,16 @@ class GenerationContextTracker extends Module {
 		delta.forEach((newDelta, _index) => {
 			// Handle delta when cursor is inside a generation.
 			// This will handle tracking deltas for a specific generation.
-			console.log("Active generation", this.activeGenerationContext)
 			if (this.activeGenerationContext !== null) {
-				let generation = this.generationContexts[this.activeGenerationContext];
 				let generationContext = this._generationContexts[this.activeGenerationContext];
 				let retainedContent = this.quill.getContents(pointer, newDelta.retain);
 
 				// Sanity Check
-				console.assert(generation !== undefined, "Unexpected Generation selected, unable to add changes to generation.");
-				if (generation === undefined) return;
+				console.assert(generationContext !== undefined, "Unexpected Generation Context selected, unable to add changes to generation.");
+				if (generationContext === undefined) return;
 
-				console.log("generation update")
 				generationContext.handleGenerationUpdate(newDelta);
-
-				if (generation.deltas.length <= 1) {
-					generation.deltas.push({ ops: [] });
-				}
-
-				for (const [opKey, opValue] of Object.entries(newDelta)) {
-					let lastOp = generation.deltas[1].ops[generation.deltas[1].ops.length - 1];
-					switch (opKey) {
-						case "retain":
-							// Every text entry will come in as a retain and an insert, we don't wan't duplicate retains. 
-							// This logic is temporary until I can figure out a better solution.
-							if (generation.deltas[1].ops.some(el => (Object.keys(el).includes("retain") && el.retain === opValue - generation.blocks[0][0]))) continue;
-
-							generation.deltas[1].ops.push({ retain: opValue - generation.blocks[0][0] });
-							break;
-						case "delete":
-							generation.deltas[1].ops.push(newDelta);
-							break;
-						case "insert":
-							if (lastOp && Object.keys(lastOp).includes("insert")) {
-								lastOp.insert.push(newDelta.insert);
-								continue;
-							}
-
-							generation.deltas[1].ops.push(newDelta);
-							break;
-					}
-				}
+				return;
 			}
 
 			// What are the ways we hit this is how do we need to handle?
@@ -98,18 +72,14 @@ class GenerationContextTracker extends Module {
 				let retainedContent = this.quill.getContents(pointer, newDelta.retain);
 
 				const generationId = newDelta.attributes.generation;
-				if (!(generationId in this.generationContexts)) {
-					this.generationContexts[newDelta.attributes.generation] = { deltas: [retainedContent], blocks: [[pointer, pointer + newDelta.retain]] };
-					this._generationContexts[newDelta.attributes.generation] = new GenerationContext(pointer, this.quill.getContents(pointer, newDelta.retain));
-					console.log("Generation Context: ", this._generationContexts);
+				if (!(generationId in this._generationContexts)) {
+					this._generationContexts[newDelta.attributes.generation] = new GenerationContext(pointer, retainedContent);
 
 					// Generations have been updated, handle UI updates
 					this.updateGenerationsUI();
 				} else {
-					this.generationContexts[newDelta.attributes.generation].blocks.push([pointer, pointer + newDelta.retain]);
-
 					// This code shouldn't work for the next generation but it should work for the first generation.
-					this.generationContexts[newDelta.attributes.generation].deltas[0].ops.push(...retainedContent.ops);
+					this._generationContexts[newDelta.attributes.generation].generations[0].delta.ops.push(...retainedContent.ops);
 				}
 			}
 
@@ -122,16 +92,33 @@ class GenerationContextTracker extends Module {
 		// Prevent error on inital page load.
 		if (range === null) return;
 
-		// console.log("This is a cursor event", range, oldRange, source, this._generationContexts);
+		console.log("This is a cursor event", range, oldRange, source, this._generationContexts);
 		for (const [generationContextId, generationContext] of Object.entries(this._generationContexts)) {
 			if (generationContext.head <= range.index && range.index <= (generationContext.head + generationContext.length)) {
-				// console.log("Inside of a generation", generationId, generation)
+				console.log("Inside of a generation", generationContextId, generationContext)
 				this.activeGenerationContext = generationContextId;
 				return;
 			}
 		}
 
 		this.activeGenerationContext = null;
+	}
+
+	handleGenerationChange(generationContext, generation) {
+		console.log("Hello, I am handling a change for generation", generationContext, generation);
+		let context = this._generationContexts[generationContext];
+		let initialLength = context.length;
+		let content = context.setActiveGeneration(generation);
+		console.log("Settings", initialLength, content, context.head)
+		console.log("delete check", this.quill.getContents(context.head, initialLength));
+		this.quill.deleteText(context.head, initialLength, 'silent');
+		let buildDelta = new Delta([{ retain: context.head }]);
+		console.log("retain", buildDelta)
+		console.log("retain check", this.quill.getContents(0, context.head));
+		buildDelta = buildDelta.concat(content)
+		buildDelta = buildDelta.retain(this.quill.getLength() - buildDelta.length);
+		console.log("Check final", buildDelta)
+		this.quill.updateContents(buildDelta, 'silent');
 	}
 
 	updateGenerationsUI() {
@@ -160,6 +147,11 @@ class GenerationContextTracker extends Module {
 			let genIndex = 0;
 			for (const generation of generationContext.generations) {
 				let li = document.createElement('li');
+				li.setAttribute('data-generation-context', generationContextId);
+				li.setAttribute('data-generation', genIndex);
+				li.addEventListener('click', (e) => {
+					this.quill.emitter.emit('generation-change', e.target.dataset.generationContext, e.target.dataset.generation);
+				});
 				li.innerText = `Generation ${genIndex++}`;
 				ul.appendChild(li);
 			}
