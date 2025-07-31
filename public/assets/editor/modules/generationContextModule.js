@@ -48,6 +48,7 @@ class GenerationContextTracker extends Module {
 		let pointer = 0;
 
 		// This compute runs for every input I think, which isn't ideal
+		let handlingNewGenerationContext = null;
 		delta.forEach((newDelta, _index) => {
 			// Handle delta when cursor is inside a generation.
 			// This will handle tracking deltas for a specific generation.
@@ -68,18 +69,19 @@ class GenerationContextTracker extends Module {
 			// - We've selected a segment of text that spans multiple blocks - create a generation, on subsequent runs of the parent closure we will have the same generation id
 			// 	this allows us to just add an additional block to blocks arr - SHOULD BE DONE - I think this also answers a question above about the generation struct
 			// - We've selected partial of a generation block text and click generation - Prompt user to remove generation or create new.
-			if (Object.keys(newDelta).includes("attributes") && Object.keys(newDelta.attributes).includes("generation")) {
+			if ((Object.keys(newDelta).includes("attributes") && Object.keys(newDelta.attributes).includes("generation")) || handlingNewGenerationContext !== null) {
 				let retainedContent = this.quill.getContents(pointer, newDelta.retain);
 
-				const generationId = newDelta.attributes.generation;
+				const generationId = newDelta?.attributes?.generation ?? handlingNewGenerationContext;
 				if (!(generationId in this._generationContexts)) {
-					this._generationContexts[newDelta.attributes.generation] = new GenerationContext(pointer, retainedContent);
+					this._generationContexts[generationId] = new GenerationContext(pointer, retainedContent);
+					handlingNewGenerationContext = newDelta.attributes.generation;
 
 					// Generations have been updated, handle UI updates
 					this.updateGenerationsUI();
 				} else {
 					// This code shouldn't work for the next generation but it should work for the first generation.
-					this._generationContexts[newDelta.attributes.generation].generations[0].delta.ops.push(...retainedContent.ops);
+					this._generationContexts[generationId].generations[0].delta.ops.push(...retainedContent.ops);
 				}
 			}
 
@@ -108,17 +110,18 @@ class GenerationContextTracker extends Module {
 		console.log("Hello, I am handling a change for generation", generationContext, generation);
 		let context = this._generationContexts[generationContext];
 		let initialLength = context.length;
-		let content = context.setActiveGeneration(generation);
-		console.log("Settings", initialLength, content, context.head)
-		console.log("delete check", this.quill.getContents(context.head, initialLength));
+
 		this.quill.deleteText(context.head, initialLength, 'silent');
-		let buildDelta = new Delta([{ retain: context.head }]);
-		console.log("retain", buildDelta)
-		console.log("retain check", this.quill.getContents(0, context.head));
-		buildDelta = buildDelta.concat(content)
-		buildDelta = buildDelta.retain(this.quill.getLength() - buildDelta.length);
-		console.log("Check final", buildDelta)
-		this.quill.updateContents(buildDelta, 'silent');
+
+		for (let genIter = 0; genIter <= generation; genIter++) {
+			let buildDelta = new Delta([{ retain: context.head }]);
+
+			buildDelta = buildDelta.concat(context.generations[genIter].delta);
+			console.log(context.head, buildDelta.length, this.quill.getContents(context.head, buildDelta.length))
+			buildDelta = buildDelta.retain(this.quill.getLength() - buildDelta.length);
+
+			this.quill.updateContents(buildDelta, 'silent');
+		}
 	}
 
 	updateGenerationsUI() {
