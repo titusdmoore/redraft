@@ -80,36 +80,29 @@ export class GenerationContext {
 		return this.buildContentForGeneration(this.#activeGeneration);
 	}
 
+	addGeneration() {
+		this.generations.push(new Generation(new Delta(), this.#head));
+		this.#activeGeneration = this.generations.length - 1;
+	}
+
 	setActiveGeneration(generation) {
 		this.#activeGeneration = generation;
-
-		return this.buildContentForActiveGeneration();
 	}
 
 	#getActiveGenerationLength() {
-		let length = 0;
+		let lenDelta = new Delta();
+		for (let genIter = 0; genIter <= this.#activeGeneration; genIter++) {
 
-		// TODO: This feels like a ton of nested loops, this just screams performance drain.
-		for (const generation of this.generations) {
-			for (const op of generation.delta.ops) {
-				Object.keys(op).forEach(opType => {
-					// NOTE: Retains don't change length, they are just pointers for reconstructing the content, so we don't need to track here.
-					switch (opType) {
-						case 'insert':
-							// console.log(op[opType], op[opType].length);
-							length += op[opType].length;
-							break;
-						case 'delete':
-							// console.log(op[opType]);
-							length -= op[opType];
-							break;
-					}
-				});
+			if (lenDelta.length() === 0) {
+				lenDelta = lenDelta.concat(this.generations[genIter].delta);
+				continue;
 			}
-			// console.log("Length", length)
+
+			lenDelta = lenDelta.compose(this.generations[genIter].delta);
 		}
 
-		return length;
+		console.log("From generation length, ", lenDelta, lenDelta.length(), this.head)
+		return lenDelta.length();
 	}
 
 }

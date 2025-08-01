@@ -7,6 +7,7 @@ export class Generation {
 	// As I work through the activeGenerationContext cursor logic, I think that generations would not have the information needed to calculate the 
 	// length meaningfully for the context.
 	// -- This is due to the pointer never being used to go to the full content after the first generation in the context
+	// TODO: refactor this to calculate length of delta
 	get length() {
 		// NOTE: I THINK this is valid, but in the future I may have to use the ops to calculate.
 		return this.#pointer;
@@ -20,52 +21,43 @@ export class Generation {
 
 	mergeOps(ops) {
 		console.log("Buffered operations", ops);
-		for (const op of ops) {
-			for (const [key, value] of Object.entries(op)) {
-				switch (key) {
-					// NOTE: what does backpace do?
-					case 'retain':
-						let retainLength = this.#localOffset(value);
+		let buildDelta = new Delta();
+		let delCount = 0;
+		ops.forEach(op => {
+			if (typeof op.delete === "number") {
+				delCount += op.delete;
+			}
 
-						// TODO: Test and resolve if needed bug
-						// This logic may introduce a bug where retains that just so happen to be of len of pointer will be dropped.
-						// This line is need to ensure we aren't adding duplicate retains that occur from editor.
-						if ((retainLength - this.#pointer) == 0) continue;
+			if (typeof op.retain === "number") {
+				// TODO: this is extremely computationally heavy (tons of loops hidden or not) so I need to figure out a better way to resolve this
+				// The reason it is like this is because to get the correct retain on second text insert you need to find the offset in editor, offset from current building delta, and the offset from the parent generation delta length.
+				op.retain -= this.#parentHeadOffset.offset + Generation.getRawDeltaLength(buildDelta) + Generation.getRawDeltaLength(this.delta);
 
-						this.delta.ops.push({ retain: retainLength });
-						this.#pointer = retainLength;
-						break;
-
-					case 'delete':
-						// NOTE: this is just a brute implementation, I don't know the edge cases of delete yet.
-						this.delta.ops.push({ delete: value });
-						break;
-					case 'insert':
-						this.#pointer += value.length;
-
-						let lastOp = this.#lastOp();
-						if (lastOp !== null && Object.keys(lastOp).includes('insert')) {
-							lastOp.insert = lastOp.insert.concat(value);
-							continue;
-						}
-
-						this.delta.ops.push({ insert: value });
-						break;
+				if (op.retain === 0 || op.retain === buildDelta.length() - delCount) {
+					return;
 				}
 			}
-		}
+
+			buildDelta = buildDelta.concat(new Delta([op]));
+		});
+		console.log("is this delta", this.delta)
+		this.delta = this.delta.concat(buildDelta);
 
 		console.log("Completed merge: ", this)
 	}
 
-	#lastOp() {
-		let lastOp = this.delta.ops[this.delta.ops.length - 1];
-		if (lastOp) return lastOp;
+	static getRawDeltaLength(delta) {
+		let length = 0;
 
-		return null;
-	}
+		delta.forEach(op => {
+			if (typeof op.delete !== "undefined") return;
 
-	#localOffset(offset) {
-		return offset - this.#parentHeadOffset.offset;
+			console.log(op)
+
+			if (typeof op.retain === "number") length += op.retain;
+			if (typeof op.insert === "string") length += op.insert.length;
+		});
+
+		return length;
 	}
 }
