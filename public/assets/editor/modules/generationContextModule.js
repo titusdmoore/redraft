@@ -42,6 +42,22 @@ class GenerationContextTracker extends Module {
 		this.quill.on('text-change', this.handleTextChange.bind(this));
 		this.quill.on('selection-change', this.handleCursorInput.bind(this));
 		this.quill.on('generation-change', this.handleGenerationChange.bind(this));
+		this.quill.on('add-generation', this.handleAddGeneration.bind(this));
+	}
+
+	// This function currently is only used to handle adding a generation from inside a generation context without having a selection (so just a cursor).
+	handleAddGeneration(...data) {
+		console.log("Inside of add generation");
+		// TODO: This is duplicated logic from ~24 lines down in handleTextChange, refactor to prevent duplicated code.
+		if (this.activeGenerationContext !== null) {
+			console.log("made it to inside of of activeGenerations")
+			let generationContext = this._generationContexts[this.activeGenerationContext];
+
+			generationContext.addGeneration();
+			this.updateGenerationsUI();
+		}
+
+		console.log("From Add generation", data);
 	}
 
 	handleTextChange(delta, oldDelta, source) {
@@ -54,6 +70,7 @@ class GenerationContextTracker extends Module {
 		// This compute runs for every input I think, which isn't ideal
 		let handlingNewGenerationContext = null;
 		delta.forEach((newDelta, _index) => {
+			console.log("Handled inside of this delta", this.activeGenerationContext, newDelta);
 			// Handle delta when cursor is inside a generation.
 			// This will handle tracking deltas for a specific generation.
 			if (this.activeGenerationContext !== null) {
@@ -112,7 +129,8 @@ class GenerationContextTracker extends Module {
 				this.#cursorDescendentContexts.push(generationContextId);
 			}
 
-			if (generationContext.head <= range.index && range.index <= (generationContext.head + generationContext.length)) {
+			console.log("Hit here, this is just a great time")
+			if (generationContext.head <= range.index && range.index <= (generationContext.head + generationContext._length)) {
 				console.log("Inside of a generation", generationContextId, generationContext)
 				this.activeGenerationContext = generationContextId;
 				return;
@@ -124,7 +142,7 @@ class GenerationContextTracker extends Module {
 
 	handleGenerationChange(generationContext, generation) {
 		let context = this._generationContexts[generationContext];
-		let initialLength = context.length;
+		let initialLength = context._length;
 
 		context.setActiveGeneration(generation);
 		let finalDelta = new Delta([{ retain: context.head }]);
@@ -161,6 +179,7 @@ class GenerationContextTracker extends Module {
 	}
 
 	updateGenerationsUI() {
+		console.log("Handling UI Updates");
 		const generationsParentElement = document.querySelector("#generations");
 
 		// Error Guard
@@ -174,6 +193,11 @@ class GenerationContextTracker extends Module {
 			// Create Generation Card
 			let el = document.createElement("div");
 			el.classList.add("generation-card--container");
+
+			if (generationContextId === this.activeGenerationContext) {
+				el.classList.add("active");
+			}
+
 			el.id = `generationContextCard${generationContextId}`;
 			el.style.margin = '0  1rem 1rem';
 			el.style.border = '1px solid green';
