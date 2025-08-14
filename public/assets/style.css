@@ -7,6 +7,8 @@
 	--secondary: #c4c6b1;
 	--accent: #a9b194;
 
+	--generation: #b3dbff;
+
 	--border-radius: .5rem;
 }
 
@@ -84,7 +86,7 @@ body {
 			font-family: inherit;
 
 			& .generation {
-				background: #efefef;
+				background: var(--generation);
 			}
 		}
 

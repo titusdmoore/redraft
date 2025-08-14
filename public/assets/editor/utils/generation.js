@@ -20,10 +20,10 @@ export class Generation {
 	}
 
 	mergeOps(ops) {
-		console.log("Buffered operations", ops);
+		console.log("Buffered operations", ops, "reversed", ops.reverse());
 		let buildDelta = new Delta();
 		let delCount = 0;
-		ops.forEach(op => {
+		ops.reverse().forEach(op => {
 			if (typeof op.delete === "number") {
 				delCount += op.delete;
 			}
@@ -33,7 +33,7 @@ export class Generation {
 				// The reason it is like this is because to get the correct retain on second text insert you need to find the offset in editor, offset from current building delta, and the offset from the parent generation delta length.
 				op.retain -= this.#parentHeadOffset.offset + Generation.getRawDeltaLength(buildDelta) + Generation.getRawDeltaLength(this.delta);
 
-				if (op.retain === 0 || op.retain === buildDelta.length() - delCount) {
+				if (op.retain <= 0 || op.retain === buildDelta.length() - delCount) {
 					return;
 				}
 			}
@@ -52,7 +52,7 @@ export class Generation {
 		delta.forEach(op => {
 			if (typeof op.delete !== "undefined") return;
 
-			console.log(op)
+			// console.log(op)
 
 			if (typeof op.retain === "number") length += op.retain;
 			if (typeof op.insert === "string") length += op.insert.length;

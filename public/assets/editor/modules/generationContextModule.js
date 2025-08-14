@@ -47,17 +47,13 @@ class GenerationContextTracker extends Module {
 
 	// This function currently is only used to handle adding a generation from inside a generation context without having a selection (so just a cursor).
 	handleAddGeneration(...data) {
-		console.log("Inside of add generation");
 		// TODO: This is duplicated logic from ~24 lines down in handleTextChange, refactor to prevent duplicated code.
 		if (this.activeGenerationContext !== null) {
-			console.log("made it to inside of of activeGenerations")
 			let generationContext = this._generationContexts[this.activeGenerationContext];
 
 			generationContext.addGeneration();
 			this.updateGenerationsUI();
 		}
-
-		console.log("From Add generation", data);
 	}
 
 	handleTextChange(delta, oldDelta, source) {
@@ -70,7 +66,6 @@ class GenerationContextTracker extends Module {
 		// This compute runs for every input I think, which isn't ideal
 		let handlingNewGenerationContext = null;
 		delta.forEach((newDelta, _index) => {
-			console.log("Handled inside of this delta", this.activeGenerationContext, newDelta);
 			// Handle delta when cursor is inside a generation.
 			// This will handle tracking deltas for a specific generation.
 			if (this.activeGenerationContext !== null) {
@@ -130,7 +125,7 @@ class GenerationContextTracker extends Module {
 			}
 
 			console.log("Hit here, this is just a great time")
-			if (generationContext.head <= range.index && range.index <= (generationContext.head + generationContext._length)) {
+			if (generationContext.head <= range.index && range.index <= (generationContext.head + generationContext.length)) {
 				console.log("Inside of a generation", generationContextId, generationContext)
 				this.activeGenerationContext = generationContextId;
 				return;
@@ -142,7 +137,7 @@ class GenerationContextTracker extends Module {
 
 	handleGenerationChange(generationContext, generation) {
 		let context = this._generationContexts[generationContext];
-		let initialLength = context._length;
+		let initialLength = context.length;
 
 		context.setActiveGeneration(generation);
 		let finalDelta = new Delta([{ retain: context.head }]);

@@ -17,23 +17,8 @@ export class GenerationContext {
 		return this.#head.offset;
 	}
 
-	get _length() {
-		try {
-			console.log("This is here", this, this.testPrivateFn)
-			// console.trace("Running on this")
-			let tmp = this.#getActiveGenerationLength();
-			return tmp;
-		} catch (error) {
-			// console.error("Handled Error: ", error);
-			return 0;
-		}
-	}
-
-	#testPrivateFn() {
-		console.log("Hello, World");
-	}
-	testPrivateFn() {
-		console.log("Hello, World");
+	get length() {
+		return this.#getActiveGenerationLength();
 	}
 
 	constructor(contextOffset, initialDelta) {
@@ -104,7 +89,6 @@ export class GenerationContext {
 	}
 
 	#getActiveGenerationLength() {
-		console.log("Got to the request inside of length")
 		let lenDelta = new Delta();
 		for (let genIter = 0; genIter <= this.#activeGeneration; genIter++) {
 
@@ -116,7 +100,6 @@ export class GenerationContext {
 			lenDelta = lenDelta.compose(this.generations[genIter].delta);
 		}
 
-		console.log("From generation length, ", lenDelta, lenDelta.length(), this.head)
 		return lenDelta.length();
 	}
 

@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	// Register all controls for formatting and binds for formatting action.
 	document.querySelectorAll("menu button").forEach(el => {
 		el.addEventListener("click", () => {
-			quill.format(el.dataset.formatType, { id: handleCustomValue(el.dataset.formatType), quill });
+			quill.format(el.dataset.formatType, { id: handleCustomValue(el.dataset.formatType), emitCallback: quill.emitter });
 		});
 	});
 });
