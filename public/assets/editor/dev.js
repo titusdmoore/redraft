@@ -6,4 +6,13 @@ const loremDelta = {
 	]
 };
 
-export const devInit = () => window.debugQuill.setContents(loremDelta);
+const loremShort = {
+	"ops": [
+		{
+			insert: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+		}
+	],
+}
+
+// export const devInit = () => window.debugQuill.setContents(loremDelta);
+export const devInit = () => window.debugQuill.setContents(loremShort);

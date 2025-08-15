@@ -20,15 +20,18 @@ export class Generation {
 	}
 
 	mergeOps(ops) {
-		console.log("Buffered operations", ops, "reversed", ops.reverse());
 		let buildDelta = new Delta();
 		let delCount = 0;
+		let deltaOffset = null;
+
+		// This is reversed because we use compose, and composing from user input would reverse the text.
 		ops.reverse().forEach(op => {
 			if (typeof op.delete === "number") {
 				delCount += op.delete;
 			}
 
 			if (typeof op.retain === "number") {
+				deltaOffset = op.retain;
 				// TODO: this is extremely computationally heavy (tons of loops hidden or not) so I need to figure out a better way to resolve this
 				// The reason it is like this is because to get the correct retain on second text insert you need to find the offset in editor, offset from current building delta, and the offset from the parent generation delta length.
 				op.retain -= this.#parentHeadOffset.offset + Generation.getRawDeltaLength(buildDelta) + Generation.getRawDeltaLength(this.delta);
@@ -38,9 +41,13 @@ export class Generation {
 				}
 			}
 
-			buildDelta = buildDelta.concat(new Delta([op]));
+			buildDelta = buildDelta.compose(new Delta([op]));
 		});
-		console.log("is this delta", this.delta)
+
+		if (deltaOffset !== null) {
+			this.delta = this.delta.concat(new Delta().retain(deltaOffset - this.#parentHeadOffset.offset));
+		}
+
 		this.delta = this.delta.concat(buildDelta);
 
 		console.log("Completed merge: ", this)

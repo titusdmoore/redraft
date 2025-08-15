@@ -34,6 +34,8 @@ document.addEventListener("DOMContentLoaded", () => {
 		});
 	});
 
+	// Add Alt+G keyboard shortcut for adding generations
+	// TODO: may make sense to bind this to text editor to limit when this even is fired.
 	document.addEventListener('keyup', (e) => {
 		if (e.key == 'g' && e.altKey) {
 			e.preventDefault();
