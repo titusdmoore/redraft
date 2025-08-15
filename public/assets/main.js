@@ -36,7 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	document.addEventListener('keyup', (e) => {
 		if (e.key == 'g' && e.altKey) {
-			console.log("here")
 			e.preventDefault();
 			quill.format("generation", { id: handleCustomValue("generation"), emitCallback: quill.emitter });
 		}
