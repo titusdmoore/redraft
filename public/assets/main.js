@@ -33,4 +33,12 @@ document.addEventListener("DOMContentLoaded", () => {
 			quill.format(el.dataset.formatType, { id: handleCustomValue(el.dataset.formatType), emitCallback: quill.emitter });
 		});
 	});
+
+	document.addEventListener('keyup', (e) => {
+		if (e.key == 'g' && e.altKey) {
+			console.log("here")
+			e.preventDefault();
+			quill.format("generation", { id: handleCustomValue("generation"), emitCallback: quill.emitter });
+		}
+	});
 });
