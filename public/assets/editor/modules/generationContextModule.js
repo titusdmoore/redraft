@@ -57,7 +57,6 @@ class GenerationContextTracker extends Module {
 	}
 
 	handleTextChange(delta, oldDelta, source) {
-		console.log("Logged from generation handler: ", delta, delta.length(), oldDelta, source);
 		// Following is what I believe is a valid assumption where as long as the new delta has generation objects, we need to add tracking for it.
 		let pointer = 0;
 

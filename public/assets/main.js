@@ -6,6 +6,8 @@ import './editor/formats/generationBlot.js';
 import './editor/modules/generationContextModule.js';
 import { devInit } from './editor/dev.js';
 
+const Delta = Quill.import('delta');
+
 const quill = new Quill('#editor', {
 	modules: {
 		generationContextTracker: true

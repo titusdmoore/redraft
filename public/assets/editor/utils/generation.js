@@ -21,36 +21,34 @@ export class Generation {
 
 	mergeOps(ops) {
 		let buildDelta = new Delta();
-		let delCount = 0;
-		let deltaOffset = null;
+		// console.log(this.#parentHeadOffset.offset)
+		// console.log("Ops", ops, this.#parentHeadOffset, this.delta)
 
 		// This is reversed because we use compose, and composing from user input would reverse the text.
-		ops.reverse().forEach(op => {
-			if (typeof op.delete === "number") {
-				delCount += op.delete;
+		ops.forEach(op => {
+			if (typeof op.retain !== 'undefined') {
+				op.retain -= this.#parentHeadOffset.offset + this.#pointer;
+
+				// This case catches retain 0 (meaning we are at current pointer), or retain -1 meaning we are about to delete.
+				if (op.retain <= 0) return;
+
+				this.#pointer += op.retain;
 			}
 
-			if (typeof op.retain === "number") {
-				deltaOffset = op.retain;
-				// TODO: this is extremely computationally heavy (tons of loops hidden or not) so I need to figure out a better way to resolve this
-				// The reason it is like this is because to get the correct retain on second text insert you need to find the offset in editor, offset from current building delta, and the offset from the parent generation delta length.
-				op.retain -= this.#parentHeadOffset.offset + Generation.getRawDeltaLength(buildDelta) + Generation.getRawDeltaLength(this.delta);
-
-				if (op.retain <= 0 || op.retain === buildDelta.length() - delCount) {
-					return;
-				}
+			if (typeof op.insert !== 'undefined') {
+				this.#pointer += op.insert.length;
 			}
 
-			buildDelta = buildDelta.compose(new Delta([op]));
+			if (typeof op.delete !== 'undefined') {
+				this.#pointer -= op.delete;
+			}
+
+			this.delta = this.#mergeOpToDelta(op, this.delta);
 		});
 
-		if (deltaOffset !== null) {
-			this.delta = this.delta.concat(new Delta().retain(deltaOffset - this.#parentHeadOffset.offset));
-		}
-
-		this.delta = this.delta.concat(buildDelta);
-
-		console.log("Completed merge: ", this)
+		console.log("this delta", this.delta)
+		// this.delta = this.#mergeOpToDelta()
+		// console.log("after delta", this.delta)
 	}
 
 	static getRawDeltaLength(delta) {
@@ -66,5 +64,45 @@ export class Generation {
 		});
 
 		return length;
+	}
+
+	#mergeOpToDelta(op, delta) {
+		if (delta.ops.length > 0) {
+			let lastOp = delta.ops[delta.ops.length - 1];
+
+			if (lastOp) {
+				if (typeof op.retain !== 'undefined') {
+					if (typeof lastOp.retain !== 'undefined') {
+						lastOp.retain += op.retain;
+					} else {
+						delta.ops.push(op);
+					}
+				}
+
+				// TODO: The way this is formatted needs to be updated to support formats
+				if (typeof op.insert !== 'undefined') {
+					if (typeof lastOp.insert !== 'undefined') {
+						console.log(lastOp)
+						lastOp.insert = lastOp.insert + op.insert;
+					} else {
+						delta.ops.push(op);
+					}
+				}
+
+				if (typeof op.delete !== 'undefined') {
+					if (typeof lastOp.insert !== 'undefined') {
+						lastOp.insert = lastOp.insert.slice(0, lastOp.insert.length - op.delete);
+					} else if (typeof lastOp.delete !== 'undefined') {
+						lastOp.delete += op.delete;
+					} else {
+						delta.ops.push(op);
+					}
+				}
+			}
+		} else {
+			delta.ops.push(op);
+		}
+
+		return delta;
 	}
 }
