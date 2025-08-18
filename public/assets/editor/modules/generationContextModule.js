@@ -113,6 +113,7 @@ class GenerationContextTracker extends Module {
 
 	// This function handles where the cursor is. This allows me to check when users are clicking or selecting a generation area.
 	handleCursorInput(range, oldRange, source) {
+		console.log("In Cursor Change", range, oldRange, source);
 		// Prevent error on inital page load.
 		if (range === null) return;
 

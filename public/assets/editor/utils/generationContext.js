@@ -53,6 +53,7 @@ export class GenerationContext {
 			clearTimeout(this.#debounceTimer);
 
 			this.#debounceTimer = setTimeout(() => {
+				console.log("queued", this.#queuedOperations);
 				this.generations[this.#activeGeneration].mergeOps(this.#queuedOperations);
 				this.#queuedOperations = [];
 			}, this.#debounceTimeout);
