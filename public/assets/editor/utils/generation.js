@@ -31,8 +31,9 @@ export class Generation {
 		console.log(ops)
 
 		let buildDelta = new Delta();
+		let runs = 0;
 		for (let opPair of chunks(ops, 2)) {
-			console.log(opPair);
+			console.log(opPair[0].retain, this.#parentHeadOffset, runs++, opPair[1]);
 		}
 
 		this.#pointer = 0;
